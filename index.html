@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pattern Lab: 3‑LED Chaser 🎨</title>
+<style>
+  :root{
+    --bg: #f0f4f8; --card: #fff; --text: #1e293b; --muted: #64748b;
+    --prime: #2563eb; --success: #10b981; --warn: #f59e0b; --danger: #ef4444;
+    --led-off: #94a3b8; --led-on: #facc15; --gnd: #334155; --signal: #3b82f6;
+    --rail-p: #fee2e2; --rail-n: #e0e7ff; --border: #cbd5e1;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,.06);
+    --shadow-lg: 0 6px 16px rgba(0,0,0,.1);
+  }
+  *{margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif;}
+  body{background:var(--bg); color:var(--text); padding:20px; line-height:1.6;}
+  h1,h2,h3{margin-bottom:.5rem;}
+  .container{max-width:1200px; margin:0 auto;}
+  .grid{display:grid; grid-template-columns: 420px 1fr; gap:20px;}
+  @media(max-width:920px){.grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--card); border-radius:12px; padding:18px; box-shadow:var(--shadow-sm); margin-bottom:18px;}
+  .card h2{font-size:16px; padding-bottom:8px; border-bottom:1px solid var(--border); margin-bottom:12px;}
+  .tip{background:#fef3c7; border-left:4px solid var(--warn); padding:10px 12px; border-radius:6px; margin:10px 0; font-size:13px;}
+  .success-note{background:#d1fae5; border-left:4px solid var(--success); padding:10px 12px; border-radius:6px; margin:10px 0; font-size:13px;}
+  .challenge-box{background:#eff6ff; border-left:4px solid var(--prime); padding:12px 14px; border-radius:8px; margin:12px 0;}
+  .challenge-box h3{font-size:14px; color:var(--prime); margin-bottom:6px;}
+
+  /* Pattern Preset Buttons */
+  .pattern-buttons{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:8px; margin:10px 0;}
+  .pattern-btn{padding:10px 12px; border:2px solid transparent; border-radius:8px; font-weight:600; cursor:pointer; transition:all .2s ease; font-size:13px; text-align:left;}
+  .pattern-btn:hover{transform:translateY(-1px); box-shadow:var(--shadow-lg);}
+  .pattern-btn.active{border-color:var(--prime); background:#eff6ff; color:var(--prime);}
+  .pattern-btn.standard{background:#e0e7ff; color:#3730a3;}
+  .pattern-btn.bounce{background:#ddd6fe; color:#5b21b6;}
+  .pattern-btn.blink{background:#fef3c7; color:#92400e;}
+  .pattern-btn.traffic{background:#d1fae5; color:#065f46;}
+  .pattern-btn.march{background:#fce7f3; color:#9d174d;}
+  .pattern-desc{font-size:11px; opacity:.8; margin-top:2px;}
+
+  /* Arduino Board */
+  .arduino{background:#00979d; color:#fff; border-radius:10px; padding:12px; display:grid; grid-template-columns:repeat(8,1fr); gap:4px; text-align:center; font-size:11px; margin-bottom:16px;}
+  .pin{background:rgba(0,0,0,.2); border-radius:4px; padding:6px 2px; transition:all .25s ease; cursor:default;}
+  .pin.active{background:rgba(255,255,255,.45); font-weight:bold; transform:scale(1.08); box-shadow:0 0 6px rgba(255,255,255,.4);}
+  .pin.gnd{background:#1f2937;}
+  .pin.p8{background:#3b82f6;}
+  .pin.p9{background:#8b5cf6;}
+  .pin.p13{background:#facc15; color:#000;}
+
+  /* Breadboard */
+  .bb-wrap{overflow-x:auto;}
+  .breadboard{min-width:620px; border:2px solid #94a3b8; border-radius:8px; background:#f8fafc; padding:10px; font-size:11px;}
+  .bb-row{display:flex; align-items:center; height:28px;}
+  .bb-label{width:24px; text-align:center; font-weight:bold; color:var(--muted); flex-shrink:0;}
+  .bb-hole{width:24px; height:24px; border-radius:50%; border:1px solid #94a3b8; background:#fff; margin:0 1px; display:flex; align-items:center; justify-content:center; transition:all .25s ease; position:relative; font-size:9px;}
+  .bb-row.p-top .bb-hole{background:var(--rail-p); border-color:#fca5a5;}
+  .bb-row.n-top .bb-hole{background:var(--rail-n); border-color:#a5b4fc;}
+  .bb-row.p-bot .bb-hole{background:var(--rail-p); border-color:#fca5a5;}
+  .bb-row.n-bot .bb-hole{background:var(--rail-n); border-color:#a5b4fc;}
+  .bb-hole.wire{border-color:var(--signal); background:#dbeafe;}
+  .bb-hole.led-pos{border-width:2px; border-color:var(--led-on);}
+  .bb-hole.res-pos{border-width:2px; border-color:#b45309; background:#fffbeb;}
+  .bb-hole.led-on{background:var(--led-on); box-shadow:0 0 10px var(--led-on), 0 0 20px rgba(250,204,21,.55); border-color:#eab308; transform:scale(1.15);}
+  .bb-hole.gnd-connected{background:#bfdbfe; border-color:#3b82f6;}
+
+  /* Controls */
+  .controls{display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;}
+  button{padding:10px 18px; border:none; border-radius:8px; font-weight:600; cursor:pointer; transition:all .2s ease; font-size:14px;}
+  button:hover{transform:translateY(-1px); box-shadow:var(--shadow-lg);}
+  button:active{transform:scale(.97);}
+  .btn-run{background:var(--success); color:#fff;}
+  .btn-stop{background:var(--danger); color:#fff;}
+  .btn-faster{background:var(--prime); color:#fff;}
+  .btn-slower{background:var(--warn); color:#fff;}
+  .btn-reset{background:var(--muted); color:#fff;}
+
+  /* Editable Code Area */
+  .code-editor{background:#0f172a; border-radius:8px; overflow:hidden; margin:10px 0;}
+  .code-header{background:#1e293b; padding:8px 12px; color:#94a3b8; font-size:11px; display:flex; justify-content:space-between; align-items:center;}
+  textarea{width:100%; min-height:240px; background:transparent; color:#e2e8f0; border:none; padding:14px; font-family:'Courier New',monospace; font-size:13px; line-height:1.5; resize:vertical; outline:none;}
+  .apply-note{font-size:12px; color:var(--muted); margin-top:4px;}
+
+  /* Status & Log */
+  .status{height:120px; overflow-y:auto; background:#f1f5f9; border-radius:6px; padding:10px; font-family:monospace; font-size:12px; margin-top:8px;}
+  .log-on{color:#10b981; font-weight:bold;}
+  .log-off{color:#94a3b8;}
+  .log-info{color:#3b82f6;}
+  .log-warn{color:#f59e0b;}
+
+  /* Checklist */
+  .checklist{list-style:none; margin-top:8px;}
+  .checklist li{padding:6px 8px; border-radius:6px; margin-bottom:4px; transition:all .2s ease; font-size:13px;}
+  .checklist li.ok{background:#d1fae5; color:#065f46;}
+  .checklist li.no{background:#fef3c7; color:#92400e;}
+
+  /* Quiz */
+  .quiz-item{margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--border);}
+  .quiz-question{font-weight:600; margin-bottom:8px;}
+  .quiz-options{display:flex; flex-direction:column; gap:6px; margin-bottom:8px;}
+  .quiz-option{padding:8px 12px; border:2px solid var(--border); border-radius:6px; cursor:pointer; transition:all .2s;}
+  .quiz-option:hover{border-color:var(--prime); background:#eff6ff;}
+  .quiz-option.correct{border-color:var(--success); background:#d1fae5;}
+  .quiz-option.wrong{border-color:var(--danger); background:#fee2e2;}
+  .quiz-feedback{font-size:13px; margin-top:6px; min-height:20px;}
+  .score-box{text-align:center; padding:12px; border-radius:8px; margin-top:10px; font-weight:bold;}
+  .score-good{background:#d1fae5; color:#065f46;}
+  .score-ok{background:#fef3c7; color:#92400e;}
+  .score-new{background:#e0e7ff; color:#3730a3;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎨 Pattern Lab: 3‑LED Chaser</h1>
+  <p style="color:var(--muted); margin-bottom:20px;">Pick a pattern → Click Run → Edit the code → Make it yours! LED1=Pin8 · LED2=Pin9 · LED3=Pin13</p>
+
+  <div class="grid">
+    <!-- Left: Patterns + Code + Controls + Quiz -->
+    <div>
+      <div class="card">
+        <h2>✨ Choose a Pattern</h2>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:8px;">Click to load ready‑made code — then tweak to create your own!</p>
+        <div class="pattern-buttons">
+          <button class="pattern-btn standard active" data-pattern="standard">
+            🔄 Standard Chase
+            <div class="pattern-desc">Forward → Backward</div>
+          </button>
+          <button class="pattern-btn bounce" data-pattern="bounce">
+            🏓 Ping‑Pong
+            <div class="pattern-desc">Bounces 3 ways</div>
+          </button>
+          <button class="pattern-btn blink" data-pattern="blink">
+            💡 All Blink
+            <div class="pattern-desc">Together & alternate</div>
+          </button>
+          <button class="pattern-btn traffic" data-pattern="traffic">
+            🚦 Traffic Light
+            <div class="pattern-desc">Sequenced timing</div>
+          </button>
+          <button class="pattern-btn march" data-pattern="march">
+            🎶 One By One
+            <div class="pattern-desc">Staggered steps</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>✏️ Code Editor</h2>
+        <div class="code-editor">
+          <div class="code-header">
+            <span id="codeTitle">Standard Chase Code</span>
+            <button style="padding:4px 10px; font-size:11px; background:#3b82f6; color:white; border:none; border-radius:4px;" id="applyCode">Apply & Run</button>
+          </div>
+<textarea id="codeInput">
+// Standard Chase — Forward & Backward
+const int led1 = 8;
+const int led2 = 9;
+const int led3 = 13;
+int speed = 300;  // Change me! (ms)
+
+void setup() {
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+}
+
+void loop() {
+  // Forward: 1 → 2 → 3
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, LOW); delay(speed);
+
+  // Backward: 3 → 2 → 1
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led3, LOW);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led2, LOW);
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+}
+</textarea>
+        </div>
+        <p class="apply-note">💡 Tip: Change <code>speed = 300</code> → <code>150</code> (faster) or <code>600</code> (slower). Keep words like <code>digitalWrite</code> as they are!</p>
+      </div>
+
+      <div class="card">
+        <h2>🎛️ Controls</h2>
+        <div class="controls">
+          <button class="btn-run" id="runBtn">▶ Run</button>
+          <button class="btn-stop" id="stopBtn">⏹ Stop</button>
+          <button class="btn-faster" id="faster">⏩ Faster</button>
+          <button class="btn-slower" id="slower">⏪ Slower</button>
+          <button class="btn-reset" id="resetBtn">↻ Reset</button>
+        </div>
+        <div style="margin-top:8px; font-size:13px;">
+          Speed: <strong id="speedDisplay">300</strong> ms | Pattern: <span id="patternName">Standard Chase</span>
+        </div>
+        <div class="status" id="logWindow">
+          <div><span class="log-info">System:</span> Pick a pattern → Run → Edit → Explore!</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🧠 Knowledge Check</h2>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">What did you discover?</p>
+        <div id="quizContainer"></div>
+        <div class="score-box score-new" id="scoreBox" style="display:none;">
+          Score: <span id="finalScore">0</span>/5
+        </div>
+        <button style="margin-top:12px; width:100%; padding:8px; background:#8b5cf6; color:white; border:none; border-radius:6px; font-weight:600;" id="resetQuiz">Restart Quiz</button>
+      </div>
+    </div>
+
+    <!-- Right: Circuit + Wiring -->
+    <div>
+      <div class="card">
+        <h2>🔌 Arduino Pins</h2>
+        <div class="arduino">
+          <div class="pin">RX</div><div class="pin">TX</div><div class="pin">A4</div><div class="pin">A5</div><div class="pin">SCL</div><div class="pin">SDA</div><div class="pin">3.3V</div><div class="pin">5V</div>
+          <div class="pin">2</div><div class="pin p8" id="pin8">8</div><div class="pin">12</div><div class="pin">11</div><div class="pin">10</div><div class="pin p9" id="pin9">9</div><div class="pin">7</div><div class="pin gnd">GND</div>
+          <div class="pin">A0</div><div class="pin">A1</div><div class="pin">A2</div><div class="pin">A3</div><div class="pin">6</div><div class="pin">5</div><div class="pin">4</div><div class="pin gnd">GND</div>
+          <div class="pin gnd" id="gndPin">GND</div><div class="pin">AREF</div><div class="pin">1</div><div class="pin">0</div><div class="pin p13" id="pin13">13</div><div class="pin">3.3V</div><div class="pin">IOREF</div><div class="pin">RST</div>
+        </div>
+        <p style="font-size:12px; color:var(--muted); margin-top:6px;">
+          <span style="color:#3b82f6;">● Pin 8 = LED1</span> &nbsp;|&nbsp;
+          <span style="color:#8b5cf6;">● Pin 9 = LED2</span> &nbsp;|&nbsp;
+          <span style="color:#facc15; color:#000;">● Pin 13 = LED3</span>
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>📐 Breadboard Layout — Exact Wiring</h2>
+        <div class="bb-wrap">
+          <div class="breadboard" id="breadboard">
+            <div class="bb-row p-top">
+              <div class="bb-label">+</div>
+              <div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div>
+              <div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div>
+            </div>
+            <div class="bb-row n-top">
+              <div class="bb-label">−</div>
+              <div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div>
+              <div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div>
+            </div>
+
+            <div class="bb-row">
+              <div class="bb-label">13</div>
+              <div class="bb-hole wire gnd-connected" id="r13a">A<br>GND</div>
+              <div class="bb-hole">B</div><div class="bb-hole">C</div>
+              <div class="bb-hole res-pos" id="r13d">D<br>R1↓</div>
+              <div class="bb-hole wire" id="r13e">E<br>Pin8</div>
+              <div class="bb-hole">F</div><div class="bb-hole">G</div>
+              <div class="bb-hole res-pos" id="r13h">H<br>R2↓</div>
+              <div class="bb-hole">I</div>
+              <div class="bb-hole res-pos" id="r13j">J<br>R3↓</div>
+            </div>
+
+            <div class="bb-row">
+              <div class="bb-label">15</div>
+              <div class="bb-hole">A</div><div class="bb-hole">B</div><div class="bb-hole">C</div>
+              <div class="bb-hole res-pos" id="r15d">D<br>R1↑</div>
+              <div class="bb-hole">E</div><div class="bb-hole">F</div><div class="bb-hole">G</div><div class="bb-hole">H</div><div class="bb-hole">I</div>
+              <div class="bb-hole led-pos" id="led1">J<br>LED1−</div>
+            </div>
+
+            <div class="bb-row">
+              <div class="bb-label">20</div>
+              <div class="bb-hole">A</div><div class="bb-hole">B</div><div class="bb-hole">C</div><div class="bb-hole">D</div>
+              <div class="bb-hole wire" id="r20e">E<br>Pin9</div>
+              <div class="bb-hole">F</div><div class="bb-hole">G</div><div class="bb-hole">H</div><div class="bb-hole">I</div>
+              <div class="bb-hole led-pos" id="led2p">J<br>LED2+</div>
+            </div>
+
+            <div class="bb-row">
+              <div class="bb-label">22</div>
+              <div class="bb-hole">A</div><div class="bb-hole">B</div><div class="bb-hole">C</div>
+              <div class="bb-hole res-pos" id="r22d">D<br>R2↑</div>
+              <div class="bb-hole">E</div><div class="bb-hole">F</div><div class="bb-hole">G</div><div class="bb-hole">H</div><div class="bb-hole">I</div>
+              <div class="bb-hole led-pos" id="led2">J<br>LED2−</div>
+            </div>
+
+            <div class="bb-row">
+              <div class="bb-label">27</div>
+              <div class="bb-hole">A</div><div class="bb-hole">B</div><div class="bb-hole">C</div><div class="bb-hole">D</div>
+              <div class="bb-hole wire" id="r27e">E<br>Pin13</div>
+              <div class="bb-hole">F</div><div class="bb-hole">G</div><div class="bb-hole">H</div><div class="bb-hole">I</div>
+              <div class="bb-hole led-pos" id="led3p">J<br>LED3+</div>
+            </div>
+
+            <div class="bb-row">
+              <div class="bb-label">29</div>
+              <div class="bb-hole">A</div><div class="bb-hole">B</div><div class="bb-hole">C</div>
+              <div class="bb-hole res-pos" id="r29d">D<br>R3↑</div>
+              <div class="bb-hole">E</div><div class="bb-hole">F</div><div class="bb-hole">G</div><div class="bb-hole">H</div><div class="bb-hole">I</div>
+              <div class="bb-hole led-pos" id="led3">J<br>LED3−</div>
+            </div>
+
+            <div class="bb-row n-bot">
+              <div class="bb-label">−</div>
+              <div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div>
+              <div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div><div class="bb-hole"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>✅ Wiring Checklist</h2>
+        <ul class="checklist" id="checklist">
+          <li class="no" id="c1">1️⃣ Arduino GND → Row 13A (bottom rail)</li>
+          <li class="no" id="c2">2️⃣ Pin 8 → Row 13E → LED1+ (Row13J); LED1− (Row15J) → R1 (15D→13D)</li>
+          <li class="no" id="c3">3️⃣ Pin 9 → Row 20E → LED2+ (Row20J); LED2− (Row22J) → R2 (22D→13H)</li>
+          <li class="no" id="c4">4️⃣ Pin 13 → Row 27E → LED3+ (Row27J); LED3− (Row29J) → R3 (29D→13J)</li>
+          <li class="no" id="c5">5️⃣ All resistors connect back to shared GND rail</li>
+        </ul>
+        <div class="tip" style="margin-top:12px;">
+          <strong>💡 Circuit Rule:</strong> Current flows: Pin → LED → Resistor → GND. Always!
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === PATTERN CODE PRESETS ===
+const patternPresets = {
+  standard: {
+    title: 'Standard Chase Code',
+    name: 'Standard Chase',
+    code: `// Standard Chase — Forward & Backward
+const int led1 = 8;
+const int led2 = 9;
+const int led3 = 13;
+int speed = 300;  // Change me! (ms)
+
+void setup() {
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+}
+
+void loop() {
+  // Forward: 1 → 2 → 3
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, LOW); delay(speed);
+
+  // Backward: 3 → 2 → 1
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led3, LOW);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led2, LOW);
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+}`
+  },
+  bounce: {
+    title: 'Ping‑Pong Code',
+    name: 'Ping‑Pong',
+    code: `// Ping‑Pong — Bounce Back & Forth
+const int led1 = 8;
+const int led2 = 9;
+const int led3 = 13;
+int speed = 200;
+
+void setup() {
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+}
+
+void loop() {
+  // Right
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led3, LOW);
+
+  // Left
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led3, LOW);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led2, LOW);
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+
+  // Center skip
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+  digitalWrite(led3, LOW);
+}`
+  },
+  blink: {
+    title: 'All Blink Code',
+    name: 'All Blink',
+    code: `// All Blink — Together & Alternate
+const int led1 = 8;
+const int led2 = 9;
+const int led3 = 13;
+int speed = 250;
+
+void setup() {
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+}
+
+void loop() {
+  // All together
+  digitalWrite(led1, HIGH);
+  digitalWrite(led2, HIGH);
+  digitalWrite(led3, HIGH);
+  delay(speed * 2);
+  
+  digitalWrite(led1, LOW);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, LOW);
+  delay(speed);
+
+  // Alternate: ends on, middle off
+  digitalWrite(led1, HIGH);
+  digitalWrite(led3, HIGH);
+  delay(speed);
+  
+  digitalWrite(led1, LOW);
+  digitalWrite(led3, LOW);
+  digitalWrite(led2, HIGH);
+  delay(speed);
+  
+  digitalWrite(led2, LOW);
+}`
+  },
+  traffic: {
+    title: 'Traffic Light Code',
+    name: 'Traffic Light',
+    code: `// Traffic Light — Timed Sequence
+const int led1 = 8;   // Green
+const int led2 = 9;   // Yellow
+const int led3 = 13;  // Red
+int speed = 400;
+
+void setup() {
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+}
+
+void loop() {
+  // Green longest
+  digitalWrite(led1, HIGH); delay(speed * 3);
+  digitalWrite(led1, LOW);
+  
+  // Yellow short
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led2, LOW);
+  
+  // Red longest
+  digitalWrite(led3, HIGH); delay(speed * 3);
+  digitalWrite(led3, LOW);
+  
+  // All flash
+  digitalWrite(led1, HIGH);
+  digitalWrite(led2, HIGH);
+  digitalWrite(led3, HIGH);
+  delay(speed / 2);
+  digitalWrite(led1, LOW);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, LOW);
+  delay(speed / 2);
+}`
+  },
+  march: {
+    title: 'One‑By‑One March Code',
+    name: 'One‑By‑One',
+    code: `// March — Overlapping Steps
+const int led1 = 8;
+const int led2 = 9;
+const int led3 = 13;
+int speed = 180;
+
+void setup() {
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+}
+
+void loop() {
+  // Build up
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led3, HIGH); delay(speed * 2);
+
+  // Tear down
+  digitalWrite(led1, LOW); delay(speed);
+  digitalWrite(led2, LOW); delay(speed);
+  digitalWrite(led3, LOW); delay(speed);
+
+  // Chase with overlap
+  digitalWrite(led1, HIGH); delay(speed);
+  digitalWrite(led2, HIGH); delay(speed);
+  digitalWrite(led1, LOW);
+  digitalWrite(led3, HIGH); delay(speed);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, LOW);
+}`
+  }
+};
+
+// === STATE ===
+let running = false;
+let timer = null;
+let delayMs = 300;
+let step = 0;
+let currentPattern = 'standard';
+
+// DOM
+const el = {
+  led1: document.getElementById('led1'),
+  led2: document.getElementById('led2'),
+  led3: document.getElementById('led3'),
+  pin8: document.getElementById('pin8'),
+  pin9: document.getElementById('pin9'),
+  pin13: document.getElementById('pin13'),
+  logWindow: document.getElementById('logWindow'),
+  speedDisplay: document.getElementById('speedDisplay'),
+  patternName: document.getElementById('patternName'),
+  codeTitle: document.getElementById('codeTitle'),
+  codeInput: document.getElementById('codeInput'),
+  quizContainer: document.getElementById('quizContainer'),
+  scoreBox: document.getElementById('scoreBox'),
+  finalScore: document.getElementById('finalScore')
+};
+
+function log(msg, type='info'){
+  const span = document.createElement('div');
+  span.innerHTML = `<span class="log-${type}">${type.toUpperCase()}:</span> ${msg}`;
+  el.logWindow.appendChild(span);
+  el.logWindow.scrollTop = el.logWindow.scrollHeight;
+}
+
+function setLED(ledEl, pinEl, isOn){
+  ledEl.classList.toggle('led-on', isOn);
+  pinEl.classList.toggle('active', isOn);
+}
+
+function resetAll(){
+  setLED(el.led1, el.pin8, false);
+  setLED(el.led2, el.pin9, false);
+  setLED(el.led3, el.pin13, false);
+  for(let i=1; i<=5; i++){
+    const li = document.getElementById(`c${i}`);
+    li.classList.remove('ok'); li.classList.add('no');
+    li.innerHTML = li.innerHTML.replace(/^✅/, `${i}️⃣`);
+  }
+}
+
+function markChecklist(){
+  for(let i=1; i<=5; i++){
+    const li = document.getElementById(`c${i}`);
+    li.classList.remove('no'); li.classList.add('ok');
+    li.innerHTML = li.innerHTML.replace(/^\d️⃣/, '✅');
+  }
+}
+
+function loadPattern(patternKey){
+  currentPattern = patternKey;
+  const preset = patternPresets[patternKey];
+  el.codeTitle.textContent = preset.title;
+  el.codeInput.value = preset.code;
+  el.patternName.textContent = preset.name;
+  
+  // Update active button
+  document.querySelectorAll('.pattern-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if(btn.dataset.pattern === patternKey) btn.classList.add('active');
+  });
+  
+  log(`Loaded: ${preset.name}`, 'info');
+}
+
+function parseCode(){
+  const code = el.codeInput.value;
+  const speedMatch = code.match(/speed\s*=\s*(\d+)/);
+  if(speedMatch){
+    delayMs = parseInt(speedMatch[1]);
+    el.speedDisplay.textContent = delayMs;
+  }
+}
+
+// === SIMULATION LOGIC — Pattern‑Aware ===
+function tick(){
+  setLED(el.led1, el.pin8, false);
+  setLED(el.led2, el.pin9, false);
+  setLED(el.led3, el.pin13, false);
+
+  switch(currentPattern){
+    case 'standard':
+      standardTick(); break;
+    case 'bounce':
+      bounceTick(); break;
+    case 'blink':
+      blinkTick(); break;
+    case 'traffic':
+      trafficTick(); break;
+    case 'march':
+      marchTick(); break;
+  }
+}
+
+function standardTick(){
+  switch(step){
+    case 0: setLED(el.led1, el.pin8, true); log('LED1 ON', 'on'); break;
+    case 1: setLED(el.led1, el.pin8, true); setLED(el.led2, el.pin9, true); log('LED1+LED2 ON', 'on'); break;
+    case 2: setLED(el.led1, el.pin8, true); setLED(el.led2, el.pin9, true); setLED(el.led3, el.pin13, true); log('All ON', 'on'); break;
+    case 3: log('All OFF', 'off'); break;
+    case 4: setLED(el.led3, el.pin13, true); log('LED3 ON — back', 'on'); break;
+    case 5: setLED(el.led2, el.pin9, true); log('LED2 ON', 'on'); break;
+    case 6: setLED(el.led1, el.pin8, true); log('LED1 ON — end', 'on'); break;
+    case 7: log('All OFF', 'off'); step = -1; break;
+  }
+  step++;
+}
+
+function bounceTick(){
+  switch(step){
+    case 0: setLED(el.led1, el.pin8, true); log('→ LED1', 'on'); break;
+    case 1: setLED(el.led2, el.pin9, true); log('→ LED2', 'on'); break;
+    case 2: setLED(el.led3, el.pin13, true); log('→ LED3 — end', 'on'); break;
+    case 3: setLED(el.led3, el.pin13, true); log('← LED3', 'on'); break;
+    case 4: setLED(el.led2, el.pin9, true); log('← LED2', 'on'); break;
+    case 5: setLED(el.led1, el.pin8, true); log('← LED1 — end', 'on'); break;
+    case 6: setLED(el.led1, el.pin8, true); setLED(el.led3, el.pin13, true); log('↔ Ends only', 'on'); break;
+    case 7: log('All OFF — repeat', 'off'); step = -1; break;
+  }
+  step++;
+}
+
+function blinkTick(){
+  switch(step){
+    case 0: setLED(el.led1, el.pin8, true); setLED(el.led2, el.pin9, true); setLED(el.led3, el.pin13, true); log('All ON together', 'on'); break;
+    case 1: log('All OFF', 'off'); break;
+    case 2: setLED(el.led1, el.pin8, true); setLED(el.led3, el.pin13, true); log('Ends ON — middle OFF', 'on'); break;
+    case 3: setLED(el.led2, el.pin9, true); log('Center ON — ends OFF', 'on'); break;
+    case 4: log('All OFF — repeat', 'off'); step = -1; break;
+  }
+  step++;
+}
+
+function trafficTick(){
+  switch(step){
+    case 0: setLED(el.led1, el.pin8, true); log('🟢 Green ON', 'on'); break;
+    case 1: setLED(el.led2, el.pin9, true); log('🟡 Yellow ON', 'on'); break;
+    case 2: setLED(el.led3, el.pin13, true); log('🔴 Red ON', 'on'); break;
+    case 3: setLED(el.led1, el.pin8, true); setLED(el.led2, el.pin9, true); setLED(el.led3, el.pin13, true); log('⚠️ Flash all', 'on'); break;
+    case 4: log('All OFF — repeat', 'off'); step = -1; break;
+  }
+  step++;
+}
+
+function marchTick(){
+  switch(step){
+    case 0: setLED(el.led1, el.pin8, true); log('Build: LED1', 'on'); break;
+    case 1: setLED(el.led1, el.pin8, true); setLED(el.led2, el.pin9, true); log('Build: +LED2', 'on'); break;
+    case 2: setLED(el.led1, el.pin8, true); setLED(el.led2, el.pin9, true); setLED(el.led3, el.pin13, true); log('Build: +LED3 — Full!', 'on'); break;
+    case 3: setLED(el.led2, el.pin9, true); setLED(el.led3, el.pin13, true); log('Reduce: -LED1', 'on'); break;
+    case 4: setLED(el.led3, el.pin13, true); log('Reduce: -LED2', 'on'); break;
+    case 5: log('All OFF — repeat', 'off'); step = -1; break;
+  }
+  step++;
+}
+
+// === QUIZ ===
+const quizQuestions = [
+  {
+    q: "What is the correct current flow path?",
+    options: ["Pin → GND → Resistor → LED", "Pin → LED → Resistor → GND", "Resistor → Pin → LED → GND", "GND → LED → Pin"],
+    correct: 1,
+    feedback: "✅ Correct! Current flows from pin → LED → resistor → GND — always."
+  },
+  {
+    q: "Why do we need resistors?",
+    options: ["Brightness control only", "Prevent LED burnout by limiting current", "Make colorful light", "Speed up the circuit"],
+    correct: 1,
+    feedback: "✅ Correct! Without resistors, LEDs draw too much current and burn out instantly."
+  },
+  {
+    q: "What does delay(speed) do?",
+    options: ["Slows down the Arduino chip", "Pauses before next instruction", "Lowers voltage", "Dims the LED"],
+    correct: 1,
+    feedback: "✅ Correct! delay() pauses execution. 1000 = 1 second. Smaller = faster pattern."
+  },
+  {
+    q: "Pin 13 is special because…",
+    options: ["It's brighter", "Has built‑in onboard LED", "Needs no resistor", "Works without code"],
+    correct: 1,
+    feedback: "✅ Correct! Pin 13 has an onboard LED — it lights up alongside your external one."
+  },
+  {
+    q: "Changing speed from 300 to 100 makes the pattern…",
+    options: ["Slower", "Faster", "Brighter", "Change color"],
+    correct: 1,
+    feedback: "✅ Correct! Smaller number = shorter pause = faster chase. 100ms = 3× faster!"
+  }
+];
+
+let score = 0;
+let answered = new Array(5).fill(false);
+
+function buildQuiz(){
+  el.quizContainer.innerHTML = '';
+  score = 0;
+  answered.fill(false);
+  el.scoreBox.style.display = 'none';
+
+  quizQuestions.forEach((q, idx) => {
+    const item = document.createElement('div');
+    item.className = 'quiz-item';
+    item.innerHTML = `
+      <div class="quiz-question">${idx+1}. ${q.q}</div>
+      <div class="quiz-options">
+        ${q.options.map((opt, oi) => `<div class="quiz-option" data-q="${idx}" data-opt="${oi}">${opt}</div>`).join('')}
+      </div>
+      <div class="quiz-feedback" id="fb${idx}"></div>
+    `;
+    el.quizContainer.appendChild(item);
+  });
+  document.querySelectorAll('.quiz-option').forEach(o => o.addEventListener('click', handleAnswer));
+}
+
+function handleAnswer(e){
+  const opt = e.target;
+  const qi = parseInt(opt.dataset.q);
+  const oi = parseInt(opt.dataset.opt);
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const allOpts = opt.parentElement.querySelectorAll('.quiz-option');
+  allOpts.forEach((o, i) => {
+    o.style.pointerEvents = 'none';
+    if(i === quizQuestions[qi].correct) o.classList.add('correct');
+    else if(i === oi) o.classList.add('wrong');
+  });
+  const fb = document.getElementById(`fb${qi}`);
+  if(oi === quizQuestions[qi].correct){
+    score++;
+    fb.innerHTML = `<span style="color:var(--success);">${quizQuestions[qi].feedback}</span>`;
+  } else {
+    fb.innerHTML = `<span style="color:var(--danger);">❌ Not quite.</span> ${quizQuestions[qi].feedback}`;
+  }
+  if(answered.every(a=>a)) showScore();
+}
+
+function showScore(){
+  el.scoreBox.style.display = 'block';
+  el.finalScore.textContent = score;
+  el.scoreBox.className = 'score-box ' + (score===5?'score-good':score>=3?'score-ok':'score-new');
+  el.scoreBox.innerHTML = score===5 ? `🌟 Perfect! ${score}/5 — Circuit Master!` : score>=3 ? `👍 Good job! ${score}/5 — Review & retry!` : `💪 Keep going! ${score}/5 — Read explanations & try again!`;
+}
+
+// === CONTROLS ===
+document.querySelectorAll('.pattern-btn').forEach(btn => {
+  btn.addEventListener('click', () => loadPattern(btn.dataset.pattern));
+});
+
+document.getElementById('applyCode').addEventListener('click', () => {
+  parseCode();
+  log(`Code applied — Speed: ${delayMs}ms`, 'info');
+});
+
+document.getElementById('runBtn').addEventListener('click', () => {
+  if(running) return;
+  running = true;
+  step = 0;
+  el.logWindow.innerHTML = '';
+  parseCode();
+  markChecklist();
+  log(`▶ ${el.patternName.textContent} started at ${delayMs}ms`, 'info');
+  timer = setInterval(tick, delayMs);
+});
+
+document.getElementById('stopBtn').addEventListener('click', () => {
+  running = false;
+  clearInterval(timer);
+  resetAll();
+  log('⏹ Stopped', 'warn');
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  running = false;
+  clearInterval(timer);
+  loadPattern('standard');
+  delayMs = 300;
+  el.speedDisplay.textContent = '300';
+  resetAll();
+  el.logWindow.innerHTML = '<div><span class="log-info">System:</span> Reset. Ready to explore!</div>';
+});
+
+document.getElementById('faster').addEventListener('click', () => {
+  if(delayMs > 50){
+    delayMs -= 50;
+    el.speedDisplay.textContent = delayMs;
+    if(running){ clearInterval(timer); timer = setInterval(tick, delayMs); }
+  }
+});
+
+document.getElementById('slower').addEventListener('click', () => {
+  delayMs += 50;
+  el.speedDisplay.textContent = delayMs;
+  if(running){ clearInterval(timer); timer = setInterval(tick, delayMs); }
+});
+
+document.getElementById('resetQuiz').addEventListener('click', buildQuiz);
+
+// Init
+buildQuiz();
+</script>
+</body>
+</html>
